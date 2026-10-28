@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>QR ir NFC nuorodos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    body { display: block; }
+    .tools { max-width: 720px; margin: 0 auto 24px; }
+    .tools code { word-break: break-all; font-size: 13px; }
+    .tools li { margin: 6px 0; }
+    .sheet { max-width: 720px; margin: 0 auto; background: #fff; padding: 24px; }
+    .stand { border: 2px solid var(--accent); border-radius: 16px; padding: 24px; text-align: center; width: 105mm; margin: 0 auto 24px; }
+    .stand h1 { font-size: 26px; }
+    .stand svg { width: 60mm; height: 60mm; }
+    .stand .nfc { font-size: 13px; color: var(--muted); }
+    .stickers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6mm; }
+    .sticker { border: 1px dashed #bbb; border-radius: 8px; padding: 3mm; text-align: center; font-size: 11px; font-weight: 700; }
+    .sticker svg { width: 30mm; height: 30mm; display: block; margin: 0 auto 2mm; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .tools { display: none; }
+      .sheet { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <section class="tools card wide">
+    <h2>QR ir NFC nuorodos</h2>
+    <p class="muted">Spausdinkite šį puslapį (Ctrl+P) – šis blokas neišsispausdins. Kiekvienas šaltinis matomas statistikoje atskirai.</p>
+    <p><b>NFC kortelėms</b> (įrašykite su „NFC Tools“ programėle → Write → Add a record → URL):</p>
+    <ol id="nfc-list"></ol>
+    <button class="btn secondary" type="button" id="print">🖨️ Spausdinti</button>
+  </section>
+
+  <section class="sheet">
+    <div class="stand">
+      <div class="logo" id="logo"></div>
+      <p class="biz" id="biz"></p>
+      <h1>Kaip mums sekėsi?</h1>
+      <p>Nuskenuokite ir įvertinkite – užtruks 5 sek.</p>
+      <div id="qr-stand"></div>
+      <p class="nfc">arba priglauskite telefoną prie NFC kortelės</p>
+    </div>
+    <div class="stickers" id="stickers"></div>
+  </section>
+
+  <script src="config.js"></script>
+  <script src="../assets/common.js"></script>
+  <script src="../assets/vendor/qrcode.js"></script>
+  <script>
+    function qrSvg(url) {
+      var qr = qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      return qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+    }
+
+    document.getElementById('biz').textContent = cfg.businessName || '';
+    document.getElementById('logo').textContent = cfg.logoText || '';
+    document.getElementById('qr-stand').innerHTML = qrSvg(reviewUrl('qr-stendas'));
+
+    var stickers = '';
+    for (var i = 0; i < 12; i++) {
+      stickers += '<div class="sticker">' + qrSvg(reviewUrl('qr-lipdukas')) + 'Įvertinkite mus ⭐</div>';
+    }
+    document.getElementById('stickers').innerHTML = stickers;
+
+    var list = '';
+    for (var n = 1; n <= 5; n++) list += '<li><code>' + reviewUrl('nfc' + n) + '</code></li>';
+    document.getElementById('nfc-list').innerHTML = list;
+
+    document.getElementById('print').addEventListener('click', function () { window.print(); });
+  </script>
+</body>
+</html>
