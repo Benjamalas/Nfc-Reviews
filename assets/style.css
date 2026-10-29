@@ -127,7 +127,6 @@ textarea { min-height: 110px; resize: vertical; }
 .public-note { margin-top: 18px; font-size: 13px; color: var(--muted); }
 .public-note a { color: var(--muted); }
 .big-emoji { font-size: 44px; line-height: 1; margin-top: 4px; }
-.countdown { font-size: 14px; color: var(--muted); margin-top: 10px; }
 
 [hidden] { display: none !important; }
 

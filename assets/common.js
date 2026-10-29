@@ -28,6 +28,11 @@ function send(data, beacon) {
   return fetch(cfg.apiUrl, { method: 'POST', mode: 'no-cors', body: body });
 }
 
+// Užklausa, kurios atsakymą reikia perskaityti (darbuotojų puslapis).
+function api(data) {
+  return fetch(cfg.apiUrl, { method: 'POST', body: JSON.stringify(data) }).then(function (r) { return r.json(); });
+}
+
 function store(key, value) {
   try {
     if (value === undefined) return localStorage.getItem(key);

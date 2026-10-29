@@ -12,7 +12,6 @@ window.REVIEW_CONFIG = {
   apiUrl: 'https://script.google.com/macros/s/AKfycbzdFnbBdrA5tXO0k-hRRXoicf8w0OG_Lg4FKgcvk_dX8kBmP7iE7as4LkBFj2ASQCSa/exec',
 
   goodFrom: 4,              // nuo kiek žvaigždučių siūlyti Google
-  autoRedirectSeconds: 4,   // geram įvertinimui – po kiek sek. atidaryti Google (0 = išjungta)
 
   replyPromise: {
     lt: 'Savininkas asmeniškai perskaitys ir susisieks per 24 val.',

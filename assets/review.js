@@ -4,11 +4,10 @@ var TEXT = {
     rateTitle: 'Kaip mums sekėsi?',
     rateSub: 'Paspauskite žvaigždutę – tai užtruks 5 sekundes.',
     bad: 'Blogai', great: 'Puikiai',
-    goodTitle: 'Ačiū, labai džiaugiamės!',
-    goodText: 'Ar galėtumėte tą patį parašyti Google? Tai mums labai padeda.',
+    goodTitle: 'Ačiū! Atidarome Google…',
+    goodText: 'Jei langas neatsidarė, spauskite mygtuką.',
     goodTip: 'Patarimas: paminėkite, ką taisėme ar pirkome.',
     googleBtn: 'Rašyti atsiliepimą Google',
-    countdown: 'Atidarome Google po {n} s…',
     change: 'Pakeisti įvertinimą',
     badTitle: 'Atsiprašome, kad nepavyko',
     badText: 'Parašykite, kas nutiko – norime tai ištaisyti.',
@@ -26,11 +25,10 @@ var TEXT = {
     rateTitle: 'How did we do?',
     rateSub: 'Tap a star – it takes 5 seconds.',
     bad: 'Bad', great: 'Great',
-    goodTitle: 'Thank you, we are glad!',
-    goodText: 'Could you share the same on Google? It helps us a lot.',
+    goodTitle: 'Thank you! Opening Google…',
+    goodText: 'If it did not open, tap the button.',
     goodTip: 'Tip: mention what we repaired or what you bought.',
     googleBtn: 'Write a Google review',
-    countdown: 'Opening Google in {n} s…',
     change: 'Change rating',
     badTitle: 'We are sorry it did not go well',
     badText: 'Tell us what happened – we want to make it right.',
@@ -50,15 +48,15 @@ var STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9
 
 var params = new URLSearchParams(location.search);
 var source = slug(params.get('s')) || 'tiesiogiai';
+var ref = (params.get('r') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12); // SMS prašymo ID
 var lang = store('lang') || (/^lt\b/i.test(navigator.language || 'lt') ? 'lt' : 'en');
 var rating = 0;
-var timer = null;
 
 var $ = function (id) { return document.getElementById(id); };
 var t = function (key) { return TEXT[lang][key]; };
 
 function event(type, extra, beacon) {
-  var data = { type: type, source: source, lang: lang, rating: rating || '' };
+  var data = { type: type, source: source, ref: ref, lang: lang, rating: rating || '' };
   for (var k in extra) data[k] = extra[k];
   return send(data, beacon);
 }
@@ -75,8 +73,6 @@ function applyLang() {
 
 function show(step) {
   ['rate', 'good', 'bad', 'done'].forEach(function (s) { $('step-' + s).hidden = s !== step; });
-  clearInterval(timer);
-  $('countdown').hidden = true;
 }
 
 function paintStars(n) {
@@ -85,32 +81,20 @@ function paintStars(n) {
 
 function goGoogle(e) {
   if (e) e.preventDefault();
-  clearInterval(timer);
   event('google', {}, true);
   location.href = cfg.googleReviewUrl;
-}
-
-function startCountdown() {
-  var n = cfg.autoRedirectSeconds || 0;
-  if (!n) return;
-  var el = $('countdown');
-  el.hidden = false;
-  el.textContent = t('countdown').replace('{n}', n);
-  timer = setInterval(function () {
-    n -= 1;
-    if (n <= 0) return goGoogle();
-    el.textContent = t('countdown').replace('{n}', n);
-  }, 1000);
 }
 
 function rate(n) {
   rating = n;
   paintStars(n);
-  event('rating');
   if (n >= (cfg.goodFrom || 4)) {
+    // Geras įvertinimas – iškart į Google rašymo langą.
+    event('rating', {}, true);
     show('good');
-    startCountdown();
+    goGoogle();
   } else {
+    event('rating');
     show('bad');
     $('msg').focus();
   }
