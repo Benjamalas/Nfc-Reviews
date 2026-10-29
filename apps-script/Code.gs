@@ -6,13 +6,18 @@
 
 // ---------- Nustatymai ----------
 const BUSINESS_NAME = 'KGF parduotuvė';
+const REVIEW_URL = 'https://benjamalas.github.io/Nfc-Reviews/kgf/';
 const NOTIFY_EMAILS = [];            // kam siųsti pranešimus; tuščia = skripto savininkui
 const TZ = 'Europe/Vilnius';
+const DELAY_MINUTES = 60;            // po kiek laiko nuo įrašymo siųsti prašymą
 const SEND_FROM_HOUR = 9;            // automatinės žinutės siunčiamos tik nuo 9:00…
 const SEND_TO_HOUR = 20;             // …iki 20:00
 const DEDUPE_DAYS = 90;              // tam pačiam klientui prašymas ne dažniau nei kas 90 d.
 const MAX_PER_DAY = 50;              // daugiausiai automatinių žinučių per dieną
 const REMINDER_DAYS = 0;             // priminimas neatidariusiems po N d. (0 = išjungta)
+
+// {vardas} = ", Tomas" arba tuščia, {nuoroda} = asmeninė atsiliepimo nuoroda.
+const REQUEST_TEXT = 'Sveiki{vardas}! Ačiū, kad apsilankėte KGF parduotuvėje. Būsime labai dėkingi, jei skirsite 30 sek. ir įvertinsite mus: {nuoroda}';
 const REMINDER_TEXT = 'Sveiki! Primename – būsime labai dėkingi už 30 sek. įvertinimą: {nuoroda}';
 const AUTO_REPLY = true;             // padėkoti el. paštu klientui, palikusiam skundą su el. paštu
 const AUTO_REPLY_TEXT = 'Ačiū, kad parašėte. Gavome jūsų žinutę – savininkas susisieks per 24 val.\n\n' + BUSINESS_NAME;
@@ -28,11 +33,11 @@ const SHEET_STATS = 'Statistika';
 const SHEET_QUEUE = 'SMS eilė';
 const STATUSES = ['Naujas', 'Sprendžiama', 'Išspręsta'];
 
-// SMS eilės stulpeliai (nuo 0).
-const Q = { id: 0, created: 1, sendAt: 2, to: 3, name: 4, staff: 5, channel: 6, text: 7, link: 8,
-            status: 9, sentAt: 10, opened: 11, rated: 12, reminder: 13, error: 14 };
-const Q_HEADERS = ['ID', 'Sukurta', 'Siųsti', 'Kam', 'Vardas', 'Darbuotojas', 'Kanalas', 'Žinutė', 'Nuoroda',
-                   'Būsena', 'Išsiųsta', 'Atidarė', 'Įvertino', 'Priminimas', 'Klaida'];
+// SMS eilės stulpeliai (nuo 0). Ranka pildomi tik pirmi du.
+const Q = { to: 0, name: 1, status: 2, sendAt: 3, sentAt: 4, opened: 5, rated: 6, reminder: 7,
+            channel: 8, created: 9, id: 10, link: 11, text: 12, error: 13 };
+const Q_HEADERS = ['Telefonas / el. paštas', 'Vardas', 'Būsena', 'Siųsti', 'Išsiųsta', 'Atidarė', 'Įvertino',
+                   'Priminimas', 'Kanalas', 'Sukurta', 'ID', 'Nuoroda', 'Žinutė', 'Klaida'];
 
 // Įvykių kodai iš puslapio -> pavadinimai lentelėje.
 const TYPES = {
@@ -52,7 +57,6 @@ function doPost(e) {
   } catch (err) {
     return json({ ok: false });
   }
-  if (d.type === 'queue') return json(queueRequest(d));
   if (!TYPES[d.type]) return json({ ok: false });
   if (d.website) return json({ ok: true }); // paslėptas laukas užpildytas = botas
 
@@ -85,92 +89,91 @@ function doGet() {
 
 // ---------- Automatiniai prašymai (SMS / el. paštas) ----------
 
-// Darbuotojų puslapis įtraukia klientą į eilę. Apsaugota PIN kodu.
-function queueRequest(d) {
-  const props = PropertiesService.getScriptProperties();
-  const cache = CacheService.getScriptCache();
-  const fails = Number(cache.get('pin-fails') || 0);
-  if (fails >= 10) return { ok: false, error: 'locked' };
-  const pin = props.getProperty('STAFF_PIN');
-  if (!pin || String(d.pin) !== pin) {
-    cache.put('pin-fails', String(fails + 1), 3600);
-    return { ok: false, error: 'pin' };
-  }
-
-  const to = normalizeTo(d.to);
-  const text = String(d.text || '').trim();
-  if (!to) return { ok: false, error: 'to' };
-  if (!text) return { ok: false, error: 'text' };
-  const ref = String(d.ref || '').replace(/[^a-z0-9]/gi, '').slice(0, 12) || Utilities.getUuid().slice(0, 8);
-
-  const now = new Date();
-  const delayMin = { now: 0, '1h': 60, '1d': 24 * 60 }[d.when];
-  const sendAt = allowedTime(new Date(now.getTime() + (delayMin === undefined ? 60 : delayMin) * 60000));
-  const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_QUEUE);
-  if (!sh) return { ok: false, error: 'setup' };
-
-  const result = withLock(() => {
-    if (recentlySent(sh, to, now)) return { ok: false, error: 'recent' };
-    sh.appendRow(["'" + ref, now, sendAt, clean(to, 100), clean(d.name, 100), clean(d.staff, 40),
-                  to.indexOf('@') > 0 ? 'email' : 'sms', clean(text, 600), clean(d.link, 300),
-                  'Laukia', '', '', '', '', '']);
-    const sameDay = Utilities.formatDate(sendAt, TZ, 'yyyyMMdd') === Utilities.formatDate(now, TZ, 'yyyyMMdd');
-    return { ok: true, sendAt: Utilities.formatDate(sendAt, TZ, sameDay ? 'HH:mm' : 'MM-dd HH:mm') };
-  });
-
-  if (result.ok && sendAt <= now) processQueue(); // „Dabar“ – siunčiame iškart
-  return result;
-}
-
-/** Paleidžiama kas 10 min. (trigeris): išsiunčia laukiančias žinutes ir priminimus. */
+/**
+ * Paleidžiama kas 10 min. (trigeris). Nauji įrašai „SMS eilė“ lape (užtenka telefono
+ * ar el. pašto) paruošiami ir išsiunčiami nustatytu laiku; siunčiami ir priminimai.
+ */
 function processQueue() {
-  const now = new Date();
-  if (!inWindow(now)) return;
   const ss = SpreadsheetApp.getActive();
   const sh = ss.getSheetByName(SHEET_QUEUE);
   if (!sh) return;
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return;
   try {
+    const now = new Date();
     const rows = rowsOf(sh);
-    const today = Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
-    let sentToday = rows.filter(r => r[Q.sentAt] instanceof Date &&
-      Utilities.formatDate(r[Q.sentAt], TZ, 'yyyy-MM-dd') === today).length;
-
-    rows.forEach((r, i) => {
-      if (sentToday >= MAX_PER_DAY) return;
-      let text = '';
-      let field = -1;
-      if (r[Q.status] === 'Laukia' && r[Q.sendAt] instanceof Date && r[Q.sendAt] <= now) {
-        text = r[Q.text];
-        field = Q.sentAt;
-      } else if (REMINDER_DAYS > 0 && r[Q.status] === 'Išsiųsta' && !r[Q.opened] && !r[Q.reminder] &&
-                 r[Q.sentAt] instanceof Date && now - r[Q.sentAt] >= REMINDER_DAYS * 864e5) {
-        text = REMINDER_TEXT.replace('{nuoroda}', r[Q.link]);
-        field = Q.reminder;
-      }
-      if (!text) return;
-
-      const row = i + 2;
-      try {
-        deliver(r[Q.channel], String(r[Q.to]), String(text));
-        sh.getRange(row, field + 1).setValue(now);
-        sh.getRange(row, Q.error + 1).setValue('');
-        if (field === Q.sentAt) {
-          sh.getRange(row, Q.status + 1).setValue('Išsiųsta');
-          log(ss, now, r[Q.channel] + (r[Q.staff] ? '-' + slug(r[Q.staff]) : ''), 'request', '', r[Q.channel], '');
-        }
-        sentToday++;
-      } catch (err) {
-        const msg = String(err.message || err).slice(0, 200);
-        sh.getRange(row, Q.error + 1).setValue(msg);
-        // Jei SMS dar neprijungtos – paliekame eilėje, išsiųs kai bus sukonfigūruota.
-        if (field === Q.sentAt && msg.indexOf('nesukonfigūruot') < 0) sh.getRange(row, Q.status + 1).setValue('Klaida');
-      }
-    });
+    rows.forEach((r, i) => prepare(sh, rows, r, i, now));
+    if (inWindow(now)) sendDue(ss, sh, rows, now);
   } finally {
     lock.releaseLock();
   }
+}
+
+// Naujai įrašytą eilutę papildo: ID, nuoroda, žinutė, siuntimo laikas.
+function prepare(sh, rows, r, i, now) {
+  if (r[Q.status] || r[Q.to] === '') return;
+  const row = i + 2;
+  const to = normalizeTo(r[Q.to]);
+  if (!to) {
+    r[Q.status] = 'Klaida';
+    r[Q.error] = 'Neteisingas telefonas ar el. paštas';
+  } else if (recentlySent(rows, i, to, now)) {
+    r[Q.status] = 'Praleista';
+    r[Q.error] = 'Šiam klientui jau siųsta per ' + DEDUPE_DAYS + ' d.';
+  } else {
+    const channel = to.indexOf('@') > 0 ? 'email' : 'sms';
+    const id = Utilities.getUuid().replace(/-/g, '').slice(0, 8);
+    const link = REVIEW_URL + '?s=' + channel + '&r=' + id;
+    const name = String(r[Q.name] || '').trim();
+    r[Q.to] = to;
+    r[Q.status] = 'Laukia';
+    r[Q.sendAt] = r[Q.sendAt] instanceof Date ? r[Q.sendAt] : allowedTime(new Date(now.getTime() + DELAY_MINUTES * 60000));
+    r[Q.channel] = channel;
+    r[Q.created] = now;
+    r[Q.id] = id;
+    r[Q.link] = link;
+    r[Q.text] = REQUEST_TEXT.replace('{vardas}', name ? ', ' + name : '').replace('{nuoroda}', link);
+    r[Q.error] = '';
+  }
+  sh.getRange(row, 1, 1, Q_HEADERS.length).setValues([r.slice(0, Q_HEADERS.length).map(v => typeof v === 'string' ? clean(v, 600) : v)]);
+}
+
+function sendDue(ss, sh, rows, now) {
+  const today = Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
+  let sentToday = rows.filter(r => r[Q.sentAt] instanceof Date &&
+    Utilities.formatDate(r[Q.sentAt], TZ, 'yyyy-MM-dd') === today).length;
+
+  rows.forEach((r, i) => {
+    if (sentToday >= MAX_PER_DAY) return;
+    let text = '';
+    let field = -1;
+    if (r[Q.status] === 'Laukia' && r[Q.sendAt] instanceof Date && r[Q.sendAt] <= now) {
+      text = r[Q.text];
+      field = Q.sentAt;
+    } else if (REMINDER_DAYS > 0 && r[Q.status] === 'Išsiųsta' && !r[Q.opened] && !r[Q.reminder] &&
+               r[Q.sentAt] instanceof Date && now - r[Q.sentAt] >= REMINDER_DAYS * 864e5) {
+      text = REMINDER_TEXT.replace('{nuoroda}', r[Q.link]);
+      field = Q.reminder;
+    }
+    if (!text) return;
+
+    const row = i + 2;
+    try {
+      deliver(r[Q.channel], String(r[Q.to]), String(text));
+      sh.getRange(row, field + 1).setValue(now);
+      sh.getRange(row, Q.error + 1).setValue('');
+      if (field === Q.sentAt) {
+        sh.getRange(row, Q.status + 1).setValue('Išsiųsta');
+        log(ss, now, r[Q.channel], 'request', '', r[Q.channel], '');
+      }
+      sentToday++;
+    } catch (err) {
+      const msg = String(err.message || err).slice(0, 200);
+      sh.getRange(row, Q.error + 1).setValue(msg);
+      // Jei SMS dar neprijungtos – paliekame eilėje, išsiųs kai bus sukonfigūruota.
+      if (field === Q.sentAt && msg.indexOf('nesukonfigūruot') < 0) sh.getRange(row, Q.status + 1).setValue('Klaida');
+    }
+  });
 }
 
 function deliver(channel, to, text) {
@@ -200,25 +203,28 @@ function markRequest(ss, ref, type, rating, now) {
   if (!ref || (type !== 'visit' && type !== 'rating')) return;
   const sh = ss.getSheetByName(SHEET_QUEUE);
   if (!sh) return;
-  const cell = sh.getRange('A:A').createTextFinder(ref).matchEntireCell(true).findNext();
+  const col = String.fromCharCode(65 + Q.id);
+  const cell = sh.getRange(col + ':' + col).createTextFinder(ref).matchEntireCell(true).findNext();
   if (!cell) return;
   const row = cell.getRow();
   if (type === 'visit' && !sh.getRange(row, Q.opened + 1).getValue()) sh.getRange(row, Q.opened + 1).setValue(now);
   if (type === 'rating' && rating) sh.getRange(row, Q.rated + 1).setValue(rating);
 }
 
-function recentlySent(sh, to, now) {
+function recentlySent(rows, self, to, now) {
   const since = now.getTime() - DEDUPE_DAYS * 864e5;
-  return rowsOf(sh).some(r => String(r[Q.to]) === to && r[Q.created] instanceof Date &&
-    r[Q.created].getTime() > since && r[Q.status] !== 'Klaida');
+  return rows.some((r, i) => i !== self && String(r[Q.to]) === to && r[Q.created] instanceof Date &&
+    r[Q.created].getTime() > since && (r[Q.status] === 'Laukia' || r[Q.status] === 'Išsiųsta'));
 }
 
 // Telefono numeris (+370…) arba el. paštas; kitaip – tuščia.
 function normalizeTo(raw) {
-  const s = String(raw || '').trim();
+  const s = String(raw === undefined || raw === null ? '' : raw).trim();
   if (/^\S+@\S+\.\S+$/.test(s)) return s.slice(0, 100);
   let p = s.replace(/[\s\-().]/g, '');
   if (/^8\d{8}$/.test(p)) p = '+370' + p.slice(1);
+  else if (/^6\d{7}$/.test(p)) p = '+370' + p;
+  else if (/^370\d{8}$/.test(p)) p = '+' + p;
   return /^\+\d{8,15}$/.test(p) ? p : '';
 }
 
@@ -288,7 +294,7 @@ function dailyDigest() {
   }
 
   const queue = ss.getSheetByName(SHEET_QUEUE);
-  const failed = (queue ? rowsOf(queue) : []).filter(r => r[Q.error]);
+  const failed = (queue ? rowsOf(queue) : []).filter(r => r[Q.error] && r[Q.status] !== 'Praleista');
   if (failed.length) lines.push('Neišsiųstų žinučių: ' + failed.length + ' (' + failed[0][Q.error] + ')', '');
 
   if (!lines.length) return;
@@ -346,11 +352,6 @@ function rowsOf(sh) {
   return last < 2 ? [] : sh.getRange(2, 1, last - 1, sh.getLastColumn()).getValues();
 }
 
-function slug(text) {
-  return String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
-}
-
 // Apriboja ilgį ir neleidžia tekstui virsti formule lentelėje.
 function clean(value, max) {
   const s = String(value || '').trim().slice(0, max);
@@ -363,10 +364,7 @@ function json(obj) {
 
 // ---------- Įdiegimas ----------
 
-/**
- * Paleiskite po kiekvieno kodo atnaujinimo: sukuria lapus, statistiką, darbuotojų PIN
- * ir automatinius trigerius. PIN matysite žurnale (Execution log).
- */
+/** Paleiskite po kiekvieno kodo atnaujinimo: sukuria lapus, statistiką ir automatinius trigerius. */
 function setup() {
   const ss = SpreadsheetApp.getActive();
   const first = ss.getSheets()[0];
@@ -386,8 +384,15 @@ function setup() {
 
   sheet(ss, SHEET_LOG, ['Data', 'Mėnuo', 'Šaltinis', 'Veiksmas', 'Įvertinimas', 'Kanalas', 'Kalba']);
 
+  // Senos struktūros eilę pervadiname, kad nesusimaišytų stulpeliai.
+  const old = ss.getSheetByName(SHEET_QUEUE);
+  if (old && old.getRange('A1').getValue() !== Q_HEADERS[0]) old.setName(SHEET_QUEUE + ' (sena)');
   const q = sheet(ss, SHEET_QUEUE, Q_HEADERS);
-  q.setColumnWidth(Q.text + 1, 300);
+  q.setColumnWidth(1, 190);
+  q.getRange('A2:A1000').setNumberFormat('@');
+  q.getRange('A1').setNote('Įrašykite kliento telefoną (8 600 12345) arba el. paštą, vardas – neprivalomas. ' +
+    'Sistema pati išsiųs atsiliepimo prašymą po ~' + DELAY_MINUTES + ' min. (tik ' + SEND_FROM_HOUR + '–' + SEND_TO_HOUR + ' val.).');
+  q.getRange(1, 1, 1, 2).setBackground('#fff3c4');
 
   // Statistika (testiniai įrašai su šaltiniu „test…“ neįskaičiuojami).
   const st = sheet(ss, SHEET_STATS, []);
@@ -398,13 +403,9 @@ function setup() {
   st.getRange('I1').setValue('Vidutinis įvertinimas').setFontWeight('bold');
   st.getRange('I2').setFormula(
     '=IFERROR(QUERY(Veikla!A:G,"select B, avg(E), count(E) where D = \'Įvertinimai\' and not C starts with \'test\' group by B order by B desc label avg(E) \'Vidurkis\', count(E) \'Kiek\' format avg(E) \'0.0\'",1),"")');
-  st.getRange('M1').setValue('Pagal šaltinį (kortelė, QR, SMS, darbuotojas)').setFontWeight('bold');
+  st.getRange('M1').setValue('Pagal šaltinį (kortelė, QR, SMS)').setFontWeight('bold');
   st.getRange('M2').setFormula(
     '=IFERROR(QUERY(Veikla!A:G,"select C, count(A) where A is not null and not C starts with \'test\' group by C pivot D",1),"")');
-
-  // Darbuotojų PIN (sukuriamas vieną kartą).
-  const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('STAFF_PIN')) props.setProperty('STAFF_PIN', String(Math.floor(100000 + Math.random() * 900000)));
 
   // Automatiniai darbai.
   const handlers = ['processQueue', 'dailyDigest', 'weeklyReport'];
@@ -415,8 +416,9 @@ function setup() {
   ScriptApp.newTrigger('dailyDigest').timeBased().everyDays(1).atHour(9).inTimezone(TZ).create();
   ScriptApp.newTrigger('weeklyReport').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(9).inTimezone(TZ).create();
 
-  const sms = props.getProperty('SMS_USER') ? 'prijungtos' : 'NEPRIJUNGTOS – įrašykite SMS_USER ir SMS_PASS (žr. README)';
-  Logger.log('Paruošta. Darbuotojų PIN: ' + props.getProperty('STAFF_PIN') + '. SMS: ' + sms + '.');
+  const sms = PropertiesService.getScriptProperties().getProperty('SMS_USER')
+    ? 'prijungtos' : 'NEPRIJUNGTOS – įrašykite SMS_USER ir SMS_PASS (žr. README)';
+  Logger.log('Paruošta. SMS: ' + sms + '.');
 }
 
 function sheet(ss, name, headers) {

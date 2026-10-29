@@ -18,9 +18,5 @@ window.REVIEW_CONFIG = {
     en: 'The owner will read it personally and get back to you within 24 hours.'
   },
 
-  // Darbuotojų puslapio žinutė. {vardas} = ", Tomas" arba tuščia, {nuoroda} = atsiliepimo nuoroda.
-  smsText: 'Sveiki{vardas}! Ačiū, kad apsilankėte KGF parduotuvėje. Būsime labai dėkingi, jei skirsite 30 sek. ir įvertinsite mus: {nuoroda}',
-
-  staff: [],                // pvz. ['Jonas', 'Tomas'] – darbuotojų puslapiui
   publicUrl: ''             // jei bus savas domenas, pvz. 'https://atsiliepimai.lt/kgf/'
 };

@@ -130,10 +130,5 @@ textarea { min-height: 110px; resize: vertical; }
 
 [hidden] { display: none !important; }
 
-/* Darbuotojų ir QR puslapiai */
+/* QR puslapis */
 .wide { max-width: 520px; text-align: left; }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.row .btn { margin-top: 10px; }
-.qr-box { text-align: center; margin-top: 16px; }
-.qr-box svg { width: 240px; height: 240px; }
-.ok { color: #1b7f3b; font-size: 14px; margin-top: 8px; }
