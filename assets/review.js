@@ -3,10 +3,11 @@ var TEXT = {
   lt: {
     rateTitle: 'Kaip mums sekėsi?',
     rateSub: 'Įvertinkite apsilankymą – tai užtruks vos kelias sekundes.',
-    stars: ['Labai blogai', 'Blogai', 'Vidutiniškai', 'Gerai', 'Puikiai!'],
-    badTitle: 'Kaip galėtume pagerėti?',
+    tapHint: 'Pasirinkite nuo 1 iki 5 žvaigždučių',
+    stars: ['😞 Labai blogai', '😕 Blogai', '😐 Vidutiniškai', '🙂 Gerai', '🤩 Puikiai!'],
+    badTitle: 'Padėkite mums tobulėti',
     badText: 'Papasakokite, kas jums nepatiko. Kiekvieną atsiliepimą skaitome ir stengiamės padėti.',
-    msgLabel: 'Jūsų atsiliepimas',
+    msgLabel: 'Jūsų pastebėjimai',
     contactLabel: 'Telefonas arba el. paštas',
     contactHint: 'Kad galėtume su jumis susisiekti ir padėti.',
     nameLabel: 'Vardas', optional: '(neprivaloma)',
@@ -20,10 +21,11 @@ var TEXT = {
   en: {
     rateTitle: 'How did we do?',
     rateSub: 'Rate your visit – it only takes a few seconds.',
-    stars: ['Very bad', 'Bad', 'Okay', 'Good', 'Excellent!'],
-    badTitle: 'How can we improve?',
+    tapHint: 'Choose 1 to 5 stars',
+    stars: ['😞 Very bad', '😕 Bad', '😐 Okay', '🙂 Good', '🤩 Excellent!'],
+    badTitle: 'Help us improve',
     badText: 'Tell us what you did not like. We read every review and want to help.',
-    msgLabel: 'Your review',
+    msgLabel: 'Your comments',
     contactLabel: 'Phone or email',
     contactHint: 'So we can get in touch and help.',
     nameLabel: 'Name', optional: '(optional)',
@@ -78,7 +80,9 @@ function showDone() {
 }
 
 function label(n) {
-  $('star-label').textContent = n ? t('stars')[n - 1] : ' ';
+  var el = $('star-label');
+  el.textContent = n ? t('stars')[n - 1] : t('tapHint');
+  el.dataset.level = n || '';
 }
 
 function paintStars(n) {
@@ -94,6 +98,10 @@ function goGoogle() {
 function rate(n) {
   rating = n;
   paintStars(n);
+  var star = document.querySelectorAll('.star')[n - 1];
+  star.classList.remove('pop');
+  void star.offsetWidth; // iš naujo paleidžia animaciją
+  star.classList.add('pop');
   if (n >= (cfg.goodFrom || 4)) {
     // Geras įvertinimas – iškart į Google rašymo langą, be jokio tarpinio ekrano.
     event('rating', {}, true);
@@ -104,6 +112,10 @@ function rate(n) {
   }
 }
 
+function markInvalid(id, on) {
+  $(id).parentNode.classList.toggle('invalid', on);
+}
+
 function validContact(v) {
   return /^\S+@\S+\.\S+$/.test(v) || v.replace(/[^\d]/g, '').length >= 8;
 }
@@ -111,21 +123,25 @@ function validContact(v) {
 function submitForm(e) {
   e.preventDefault();
   var err = $('error');
-  var btn = $('form').querySelector('button[type=submit]');
+  var btn = $('form').querySelector('button[type=submit] span');
   var message = $('msg').value.trim();
   var contact = $('contact').value.trim();
   err.hidden = true;
+  markInvalid('msg', false);
+  markInvalid('contact', false);
   if (message.length < 3) {
+    markInvalid('msg', true);
     err.textContent = t('errEmpty');
     err.hidden = false;
     return $('msg').focus();
   }
   if (!validContact(contact)) {
+    markInvalid('contact', true);
     err.textContent = t('errContact');
     err.hidden = false;
     return $('contact').focus();
   }
-  btn.disabled = true;
+  btn.parentNode.disabled = true;
   btn.textContent = t('sending');
   event('feedback', {
     message: message,
@@ -138,7 +154,7 @@ function submitForm(e) {
     err.textContent = t('errNet');
     err.hidden = false;
   }).then(function () {
-    btn.disabled = false;
+    btn.parentNode.disabled = false;
     btn.textContent = t('send');
   });
 }

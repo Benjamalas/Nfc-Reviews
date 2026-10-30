@@ -20,10 +20,14 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
   color: var(--text);
   font: 16px/1.55 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(500px 320px at 105% 100%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    radial-gradient(420px 280px at -10% 70%, color-mix(in srgb, #f59e0b 8%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 h1, h2 { margin: 0 0 6px; line-height: 1.2; letter-spacing: -.02em; }
@@ -38,37 +42,53 @@ p { margin: 8px 0; }
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 34px 16px 92px;
+  padding: 34px 16px 100px;
   text-align: center;
   color: #fff;
-  background: linear-gradient(150deg, var(--accent-dark) 0%, var(--accent) 70%, color-mix(in srgb, var(--accent) 70%, #22d3ee) 100%);
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, .14) 1px, transparent 0) 0 0 / 18px 18px,
+    linear-gradient(150deg, var(--accent-dark) 0%, var(--accent) 65%, color-mix(in srgb, var(--accent) 65%, #22d3ee) 100%);
 }
 .hero::before, .hero::after {
   content: "";
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .08);
+  pointer-events: none;
+  animation: float 14s ease-in-out infinite;
 }
-.hero::before { width: 260px; height: 260px; top: -120px; right: -70px; }
-.hero::after { width: 180px; height: 180px; bottom: -60px; left: -50px; }
+.hero::before {
+  width: 280px; height: 280px; top: -130px; right: -80px;
+  background: radial-gradient(circle, rgba(255, 255, 255, .18), rgba(255, 255, 255, .04) 70%);
+}
+.hero::after {
+  width: 200px; height: 200px; top: 30px; left: -90px;
+  background: radial-gradient(circle, rgba(255, 255, 255, .12), transparent 70%);
+  animation-delay: -7s;
+}
+@keyframes float { 50% { transform: translate(14px, 18px) scale(1.06); } }
+.wave { position: absolute; left: 0; right: 0; bottom: -1px; width: 100%; height: 40px; fill: var(--bg); }
+
 .hero .logo {
-  background: #fff;
+  background: linear-gradient(160deg, #fff, #eef2ff);
   color: var(--accent);
-  box-shadow: 0 10px 30px rgba(5, 10, 40, .25);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, .14), 0 14px 34px rgba(5, 10, 40, .3);
+  animation: rise .5s ease both;
 }
-.hero .biz { color: #fff; font-size: 19px; font-weight: 800; margin: 12px 0 0; letter-spacing: -.01em; }
-.tagline { margin: 2px 0 0; font-size: 14px; color: rgba(255, 255, 255, .78); }
+.hero .biz { color: #fff; font-size: 20px; font-weight: 800; margin: 14px 0 0; letter-spacing: -.01em; }
+.tagline { margin: 2px 0 0; font-size: 14px; color: rgba(255, 255, 255, .8); }
 
 .lang {
   position: absolute;
   top: 14px;
   right: 14px;
-  z-index: 1;
+  z-index: 2;
   border: 1px solid rgba(255, 255, 255, .35);
   background: rgba(255, 255, 255, .12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   color: #fff;
   border-radius: 999px;
-  padding: 5px 12px;
+  padding: 6px 12px;
   font: 600 13px/1 inherit;
   cursor: pointer;
 }
@@ -93,31 +113,34 @@ p { margin: 8px 0; }
 .logo img { width: 100%; height: 100%; object-fit: contain; }
 .biz { margin: 0; font-size: 15px; color: var(--muted); font-weight: 600; }
 
-/* ---------- Kortelė ---------- */
+/* ---------- Kortelės ---------- */
 .card {
   position: relative;
+  z-index: 1;
   width: calc(100% - 32px);
   max-width: 440px;
-  margin: -60px auto 0;
+  margin: -66px auto 0;
   background: var(--card);
   border-radius: var(--radius);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 20px 50px rgba(15, 23, 42, .12);
+  border: 1px solid rgba(255, 255, 255, .7);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 24px 60px -12px rgba(15, 23, 42, .18);
   padding: 30px 22px 24px;
   text-align: center;
 }
-#done-card { animation: rise .35s ease both; }
-@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+#rate-card { animation: rise .45s .05s ease both; }
+#done-card { animation: rise .4s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
 /* Atsiliepimo burbulas, iššokantis iš po žvaigždučių kortelės */
 .card.bubble {
   margin-top: 18px;
   transform-origin: 50% 0;
-  animation: pop .45s cubic-bezier(.2, .9, .3, 1.15) both;
+  animation: pop .5s cubic-bezier(.2, .9, .3, 1.15) both;
 }
 .card.bubble::before {
   content: "";
   position: absolute;
-  top: -9px;
+  top: -10px;
   left: 50%;
   width: 20px;
   height: 20px;
@@ -126,33 +149,81 @@ p { margin: 8px 0; }
   transform: translateX(-50%) rotate(45deg);
 }
 @keyframes pop {
-  from { opacity: 0; transform: translateY(-36px) scale(.94); }
+  from { opacity: 0; transform: translateY(-40px) scale(.93); }
   to { opacity: 1; transform: none; }
 }
 
-.foot { text-align: center; color: var(--muted); font-size: 13px; padding: 22px 16px 32px; }
+.foot { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 16px 34px; }
 
 /* ---------- Žvaigždutės ---------- */
-.stars { display: flex; justify-content: center; gap: 4px; margin: 22px 0 4px; }
+.stars { display: flex; justify-content: center; gap: 4px; margin: 22px 0 6px; }
 .star {
+  position: relative;
   border: 0;
   background: none;
   padding: 3px;
   cursor: pointer;
-  color: var(--star-off);
-  transition: transform .15s ease, color .15s ease;
+  transition: transform .18s cubic-bezier(.3, 1.4, .5, 1);
   -webkit-tap-highlight-color: transparent;
+  animation: star-in .5s cubic-bezier(.2, .9, .3, 1.3) backwards;
 }
-.star svg { width: 50px; height: 50px; display: block; fill: currentColor; }
-.star.on { color: var(--star); filter: drop-shadow(0 4px 8px rgba(251, 191, 36, .45)); }
-.star:hover { transform: scale(1.12); }
-.star:active { transform: scale(.9); }
-.star-label { min-height: 24px; font-weight: 700; color: var(--accent); margin: 4px 0 0; }
+.star:nth-child(2) { animation-delay: .06s; }
+.star:nth-child(3) { animation-delay: .12s; }
+.star:nth-child(4) { animation-delay: .18s; }
+.star:nth-child(5) { animation-delay: .24s; }
+@keyframes star-in { from { opacity: 0; transform: translateY(10px) scale(.5); } }
+.star svg { width: 50px; height: 50px; display: block; overflow: visible; }
+.star svg path { fill: var(--star-off); transition: fill .15s; }
+.star.on svg path { fill: url(#star-grad); }
+.star.on svg { filter: drop-shadow(0 5px 9px rgba(245, 158, 11, .4)); }
+.star:hover { transform: scale(1.14) rotate(-4deg); }
+.star:active { transform: scale(.88); }
+.star.pop svg { animation: star-pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+.star.pop::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--star);
+  animation: ring .5s ease-out forwards;
+}
+@keyframes star-pop { 40% { transform: scale(1.35); } }
+@keyframes ring { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(1.5); } }
+
+.star-label {
+  display: inline-block;
+  min-height: 32px;
+  margin: 8px 0 0;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--muted);
+  background: transparent;
+  transition: background .2s, color .2s;
+}
+.star-label[data-level="1"], .star-label[data-level="2"] { color: #b91c1c; background: #fef2f2; }
+.star-label[data-level="3"] { color: #b45309; background: #fffbeb; }
+.star-label[data-level="4"], .star-label[data-level="5"] { color: #15803d; background: #f0fdf4; }
 
 /* ---------- Forma ---------- */
 form { text-align: left; margin-top: 8px; }
-label { display: block; font-size: 14px; font-weight: 700; margin: 16px 0 6px; }
+label { display: block; font-size: 14px; font-weight: 700; margin: 18px 0 7px; }
 label small { font-weight: 500; color: var(--muted); font-size: 13px; }
+.field { position: relative; }
+.field svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 19px;
+  height: 19px;
+  margin-top: -9.5px;
+  fill: #a3afc2;
+  pointer-events: none;
+  transition: fill .15s;
+}
+.field.area svg { top: 15px; margin-top: 0; }
+.field:focus-within svg { fill: var(--accent); }
 input, textarea, select {
   width: 100%;
   border: 1.5px solid var(--line);
@@ -163,25 +234,40 @@ input, textarea, select {
   color: var(--text);
   transition: border-color .15s, box-shadow .15s, background .15s;
 }
+.field input, .field textarea { padding-left: 44px; }
 input:focus, textarea:focus, select:focus {
   outline: none;
   background: #fff;
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
+.field.invalid input, .field.invalid textarea { border-color: var(--danger); background: #fff7f7; }
+.field.invalid svg { fill: var(--danger); }
 textarea { min-height: 120px; resize: vertical; }
-.hint { font-size: 13px; color: var(--muted); margin: 6px 2px 0; }
+.hint { font-size: 13px; color: var(--muted); margin: 7px 2px 0; }
 .hp { position: absolute; left: -9999px; }
-.error { color: var(--danger); font-size: 14px; font-weight: 500; margin-top: 12px; }
+.error {
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 14px;
+  animation: shake .35s ease;
+}
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
 /* ---------- Mygtukai ---------- */
 .btn {
-  display: block;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   width: 100%;
   border: 0;
   border-radius: 14px;
   padding: 16px 18px;
-  margin-top: 20px;
+  margin-top: 22px;
   font: inherit;
   font-weight: 700;
   font-size: 17px;
@@ -190,15 +276,51 @@ textarea { min-height: 120px; resize: vertical; }
   text-decoration: none;
   color: #fff;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 35%, transparent);
-  transition: transform .1s ease, opacity .15s;
+  box-shadow: 0 12px 26px -6px color-mix(in srgb, var(--accent) 55%, transparent);
+  transition: transform .12s ease, opacity .15s, box-shadow .15s;
 }
+.btn svg { width: 19px; height: 19px; fill: currentColor; transition: transform .2s; }
+.btn:hover svg { transform: translateX(3px); }
+.btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .28), transparent);
+  transform: skewX(-20deg);
+  animation: sheen 4s 1.2s ease-in-out infinite;
+}
+@keyframes sheen { 0%, 65% { left: -60%; } 100% { left: 130%; } }
 .btn:active { transform: scale(.98); }
-.btn:disabled { opacity: .6; cursor: default; }
+.btn:disabled { opacity: .65; cursor: default; }
 .btn.secondary { background: #eef1f7; color: var(--text); box-shadow: none; }
+.btn.secondary::after { display: none; }
 
-/* ---------- Būsenos ---------- */
-.check { width: 76px; height: 76px; margin: 6px auto 16px; display: block; }
+/* ---------- Ačiū ---------- */
+.burst { position: relative; width: 84px; height: 84px; margin: 4px auto 18px; }
+.burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--star);
+  opacity: 0;
+  animation: burst .8s .35s ease-out;
+}
+.burst i:nth-child(2n) { background: var(--accent); }
+.burst i:nth-child(3n) { background: #f472b6; }
+.burst i:nth-child(4n) { background: var(--ok); }
+@keyframes burst {
+  from { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); }
+  to { opacity: 0; transform: rotate(var(--a)) translateY(-62px) scale(.3); }
+}
+.check { position: relative; width: 84px; height: 84px; display: block; animation: check-in .45s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes check-in { from { transform: scale(.4); opacity: 0; } }
 .check circle { fill: color-mix(in srgb, var(--ok) 12%, #fff); stroke: var(--ok); stroke-width: 2.5; }
 .check path {
   fill: none;
@@ -208,9 +330,14 @@ textarea { min-height: 120px; resize: vertical; }
   stroke-linejoin: round;
   stroke-dasharray: 40;
   stroke-dashoffset: 40;
-  animation: draw .5s .2s ease forwards;
+  animation: draw .45s .25s ease forwards;
 }
 @keyframes draw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .check path { stroke-dashoffset: 0; }
+}
 
 /* QR puslapis */
 .wide { max-width: 520px; text-align: left; }
