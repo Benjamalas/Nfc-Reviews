@@ -8,6 +8,17 @@ Review system for NFC cards, QR codes and automatic SMS/email requests.
 ⚠️ Not showing Google to unhappy customers is "review gating". Google's rules forbid it, and if reported, Google can remove reviews or penalise the profile.
 
 Live (KGF): https://benjamalas.github.io/Nfc-Reviews/kgf/
+Statistics hub: https://benjamalas.github.io/Nfc-Reviews/hub/ (demo data: add `?demo`)
+
+## Statistics hub (`hub/`)
+Owner/developer dashboard that answers "does it work and is it worth it":
+- **Health**: last activity, SMS connected, message errors, queue, unanswered complaints.
+- **Verdict**: plain-language conclusion from 6 checks (usage, rating rate, Google redirects, complaints caught, Google growth, open complaints). Needs ≥10 ratings.
+- **Numbers vs the previous period**: visits, ratings, average ★, sent to Google, private reviews, Google review count.
+- **Charts**: visits over time, Google vs private outcome, star distribution, funnel, sources (which NFC card / QR / SMS works), hour of day and weekday.
+- **Google profile**: type the current Google rating and review count about once a week. Growth since the baseline (4,3 ★ / 231) is the real proof the system works.
+
+Access: run `setup` once after updating Code.gs. The execution log shows the **hub key**, which you enter on the hub page (it's saved only in your browser). For a new client, add it to `hub/config.js`.
 
 ## What runs on its own
 | | |
@@ -25,6 +36,7 @@ Live (KGF): https://benjamalas.github.io/Nfc-Reviews/kgf/
 | `kgf/index.html` | Review page (link for NFC cards / QR) |
 | `kgf/qr.html` | Printable stand + stickers, and NFC card links |
 | `kgf/config.js` | Client settings (name, colour, Google link, API URL) |
+| `hub/` | Statistics hub (owner/developer dashboard) |
 | `apps-script/Code.gs` | Backend: Sheet, emails, SMS queue, daily/weekly emails. SMS text and timing settings are at the top |
 | `docs/kgf-atsakymai-google.md` | Ready replies to KGF's existing Google reviews |
 

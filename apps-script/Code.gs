@@ -14,6 +14,8 @@ const SEND_FROM_HOUR = 9;            // automatinės žinutės siunčiamos tik n
 const SEND_TO_HOUR = 20;             // …iki 20:00
 const DEDUPE_DAYS = 90;              // tam pačiam klientui prašymas ne dažniau nei kas 90 d.
 const MAX_PER_DAY = 50;              // daugiausiai automatinių žinučių per dieną
+// Google profilis prieš paleidžiant sistemą – su juo statistikos centras lygina augimą.
+const GOOGLE_BASELINE = { date: '2026-10-28', rating: 4.3, count: 231 };
 const REMINDER_DAYS = 0;             // priminimas neatidariusiems po N d. (0 = išjungta)
 
 // {vardas} = ", Tomas" arba tuščia, {nuoroda} = asmeninė atsiliepimo nuoroda.
@@ -33,6 +35,7 @@ const SHEET_FEEDBACK = 'Atsiliepimai';
 const SHEET_LOG = 'Veikla';
 const SHEET_STATS = 'Statistika';
 const SHEET_QUEUE = 'SMS eilė';
+const SHEET_GOOGLE = 'Google profilis';
 const STATUSES = ['Naujas', 'Sprendžiama', 'Išspręsta'];
 
 // SMS eilės stulpeliai (nuo 0). Ranka pildomi tik pirmi du.
@@ -61,6 +64,7 @@ function doPost(e) {
   } catch (err) {
     return json({ ok: false });
   }
+  if (d.type === 'snapshot') return json(addSnapshot(d));
   if (!TYPES[d.type]) return json({ ok: false });
   if (d.website) return json({ ok: true }); // paslėptas laukas užpildytas = botas
 
@@ -88,8 +92,67 @@ function doPost(e) {
 }
 
 // Atidarius URL naršyklėje – patikrinimas, kad skriptas veikia.
-function doGet() {
+// ?action=stats&key=… – duomenys statistikos centrui (hub).
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  if (p.action === 'stats') return json(hubData(p));
   return ContentService.createTextOutput('OK – atsiliepimų sistema veikia.');
+}
+
+// ---------- Statistikos centras ----------
+
+function hubKeyOk(key) {
+  const real = PropertiesService.getScriptProperties().getProperty('HUB_KEY');
+  return !!real && String(key || '') === real;
+}
+
+function hubData(p) {
+  if (!hubKeyOk(p.key)) return { ok: false, error: 'key' };
+  const ss = SpreadsheetApp.getActive();
+  const since = Date.now() - Math.min(Number(p.days) || 730, 3650) * 864e5;
+  const iso = d => (d instanceof Date ? d.toISOString() : '');
+  const codes = {};
+  Object.keys(TYPES).forEach(k => { codes[TYPES[k]] = k; });
+  const sheetRows = name => (ss.getSheetByName(name) ? rowsOf(ss.getSheetByName(name)) : []);
+  const recent = r => r[0] instanceof Date && r[0].getTime() >= since;
+
+  return {
+    ok: true,
+    business: BUSINESS_NAME,
+    now: new Date().toISOString(),
+    sheetUrl: ss.getUrl(),
+    smsConnected: !!PropertiesService.getScriptProperties().getProperty('SMS_USER'),
+    // [laikas, šaltinis, tipas, įvertinimas]
+    events: sheetRows(SHEET_LOG).filter(recent).map(r => [iso(r[0]), String(r[2]), codes[r[3]] || '', Number(r[4]) || 0]),
+    // [laikas, įvertinimas, žinutė, vardas, kontaktas (paslėptas), šaltinis, būsena]
+    feedback: sheetRows(SHEET_FEEDBACK).filter(recent).map(r => [iso(r[0]), Number(r[1]) || 0, String(r[2]).slice(0, 500),
+      String(r[3]), maskContact(r[4]), String(r[5]), String(r[6])]),
+    // [sukurta, tipas, kanalas, būsena, išsiųsta, atidarė, įvertino, klaida]
+    queue: sheetRows(SHEET_QUEUE).filter(r => r[Q.created] instanceof Date && r[Q.created].getTime() >= since)
+      .map(r => [iso(r[Q.created]), String(r[Q.kind] || ''), String(r[Q.channel]), String(r[Q.status]), iso(r[Q.sentAt]),
+        iso(r[Q.opened]), Number(r[Q.rated]) || 0, r[Q.error] ? 1 : 0]),
+    // [data, įvertinimas, atsiliepimų sk.]
+    google: sheetRows(SHEET_GOOGLE).filter(r => r[0] instanceof Date).map(r => [iso(r[0]), Number(r[1]) || 0, Number(r[2]) || 0])
+  };
+}
+
+// Google profilio įrašas iš statistikos centro (įvertinimas ir atsiliepimų skaičius).
+function addSnapshot(d) {
+  if (!hubKeyOk(d.key)) return { ok: false, error: 'key' };
+  const rating = Number(String(d.rating).replace(',', '.'));
+  const count = Math.round(Number(d.count));
+  if (!(rating >= 1 && rating <= 5) || !(count >= 0)) return { ok: false, error: 'value' };
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_GOOGLE);
+  if (!sh) return { ok: false, error: 'setup' };
+  sh.appendRow([new Date(), rating, count]);
+  return { ok: true };
+}
+
+function maskContact(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (s.indexOf('@') > 0) return s.slice(0, 2) + '***' + s.slice(s.indexOf('@'));
+  return s.length > 6 ? s.slice(0, 4) + '****' + s.slice(-2) : '****';
 }
 
 // ---------- Automatiniai prašymai (SMS / el. paštas) ----------
@@ -414,6 +477,12 @@ function setup() {
     'Sistema pati išsiųs atsiliepimo prašymą po ~' + DELAY_MINUTES + ' min. (tik ' + SEND_FROM_HOUR + '–' + SEND_TO_HOUR + ' val.).');
   q.getRange(1, 1, 1, 2).setBackground('#fff3c4');
 
+  // Google profilio istorija (pirmas įrašas – būklė prieš sistemą).
+  const g = sheet(ss, SHEET_GOOGLE, ['Data', 'Įvertinimas', 'Atsiliepimų sk.']);
+  if (g.getLastRow() < 2) {
+    g.appendRow([new Date(GOOGLE_BASELINE.date + 'T12:00:00'), GOOGLE_BASELINE.rating, GOOGLE_BASELINE.count]);
+  }
+
   // Statistika (testiniai įrašai su šaltiniu „test…“ neįskaičiuojami).
   const st = sheet(ss, SHEET_STATS, []);
   st.clear();
@@ -436,9 +505,12 @@ function setup() {
   ScriptApp.newTrigger('dailyDigest').timeBased().everyDays(1).atHour(9).inTimezone(TZ).create();
   ScriptApp.newTrigger('weeklyReport').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(9).inTimezone(TZ).create();
 
-  const sms = PropertiesService.getScriptProperties().getProperty('SMS_USER')
-    ? 'prijungtos' : 'NEPRIJUNGTOS – įrašykite SMS_USER ir SMS_PASS (žr. README)';
-  Logger.log('Paruošta. SMS: ' + sms + '.');
+  // Statistikos centro raktas (sukuriamas vieną kartą).
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('HUB_KEY')) props.setProperty('HUB_KEY', Utilities.getUuid().replace(/-/g, '').slice(0, 20));
+
+  const sms = props.getProperty('SMS_USER') ? 'prijungtos' : 'NEPRIJUNGTOS – įrašykite SMS_USER ir SMS_PASS (žr. README)';
+  Logger.log('Paruošta. SMS: ' + sms + '. Statistikos centro raktas: ' + props.getProperty('HUB_KEY'));
 }
 
 function sheet(ss, name, headers) {

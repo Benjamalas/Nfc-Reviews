@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Statistikos centras</title>
+  <link rel="stylesheet" href="hub.css?v=1">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">★</span>
+      <div>
+        <h1>Statistikos centras</h1>
+        <p class="sub" id="client-name"></p>
+      </div>
+    </div>
+    <div class="controls" id="controls" hidden>
+      <select id="client" aria-label="Klientas" hidden></select>
+      <div class="seg" id="period" role="group" aria-label="Laikotarpis">
+        <button type="button" data-days="7">7 d.</button>
+        <button type="button" data-days="30">30 d.</button>
+        <button type="button" data-days="90">90 d.</button>
+        <button type="button" data-days="0">Viskas</button>
+      </div>
+      <label class="check"><input type="checkbox" id="hide-test" checked> Be testų</label>
+      <button type="button" class="ghost" id="refresh">Atnaujinti</button>
+      <button type="button" class="ghost" id="logout">Atsijungti</button>
+    </div>
+  </header>
+
+  <p class="banner" id="demo-banner" hidden>Rodomi <b>demonstraciniai</b> duomenys – taip atrodys centras, kai sistema veiks kelis mėnesius. <a href="./">Prisijungti prie tikrų duomenų</a></p>
+  <p class="banner error-banner" id="error-banner" hidden></p>
+
+  <section class="panel login" id="login" hidden>
+    <h2>Prisijungimas</h2>
+    <p class="sub">Įveskite statistikos centro raktą. Jį rodo Apps Script žurnalas paleidus <code>setup</code>.</p>
+    <form id="login-form">
+      <input id="key" autocomplete="off" placeholder="Raktas" aria-label="Raktas">
+      <button class="btn" type="submit">Prisijungti</button>
+    </form>
+    <p class="error" id="login-error" hidden></p>
+    <p><a href="?demo">Peržiūrėti su demonstraciniais duomenimis →</a></p>
+  </section>
+
+  <main id="dash" hidden>
+    <section class="health" id="health" aria-label="Sistemos būklė"></section>
+    <section class="panel verdict" id="verdict"></section>
+    <section class="tiles" id="tiles"></section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Apsilankymai</h2>
+        <p class="sub" id="visits-sub">Kiek kartų atidarytas atsiliepimų puslapis</p>
+        <div class="chart" id="chart-visits"></div>
+      </section>
+      <section class="panel">
+        <h2>Įvertinimų rezultatas</h2>
+        <p class="sub">Kur nukeliavo įvertinę klientai</p>
+        <div class="legend">
+          <span><i class="sw s1"></i>Į Google (4–5★)</span>
+          <span><i class="sw s2"></i>Privatus (1–3★)</span>
+        </div>
+        <div class="chart" id="chart-outcome"></div>
+        <details><summary>Rodyti lentelę</summary><div id="table-outcome"></div></details>
+      </section>
+      <section class="panel">
+        <h2>Įvertinimų pasiskirstymas</h2>
+        <p class="sub" id="stars-sub"></p>
+        <div id="chart-stars"></div>
+      </section>
+      <section class="panel">
+        <h2>Kelias iki atsiliepimo</h2>
+        <p class="sub">Kiek klientų pereina kiekvieną žingsnį</p>
+        <div id="funnel"></div>
+      </section>
+      <section class="panel">
+        <h2>Šaltiniai</h2>
+        <p class="sub">Kuri kortelė, QR ar žinutė atveda daugiausiai</p>
+        <div id="sources"></div>
+      </section>
+      <section class="panel">
+        <h2>Kada klientai vertina</h2>
+        <h3>Paros valanda</h3>
+        <div class="chart" id="chart-hours"></div>
+        <h3>Savaitės diena</h3>
+        <div class="chart" id="chart-days"></div>
+      </section>
+      <section class="panel">
+        <h2>SMS ir el. pašto žinutės</h2>
+        <p class="sub">Automatiniai prašymai ir atsakymai į atsiliepimus</p>
+        <div id="requests"></div>
+      </section>
+      <section class="panel">
+        <h2>Google profilis</h2>
+        <p class="sub">Tikrasis rezultatas: ar daugėja Google atsiliepimų</p>
+        <div id="google"></div>
+        <form id="snap-form" class="snap">
+          <input id="snap-rating" inputmode="decimal" placeholder="Įvertinimas, pvz. 4,4" aria-label="Google įvertinimas">
+          <input id="snap-count" inputmode="numeric" placeholder="Atsiliepimų sk." aria-label="Google atsiliepimų skaičius">
+          <button class="btn" type="submit">Įrašyti</button>
+        </form>
+        <p class="error" id="snap-error" hidden></p>
+      </section>
+      <section class="panel wide">
+        <h2>Privatūs atsiliepimai</h2>
+        <p class="sub" id="complaints-sub"></p>
+        <div id="complaints"></div>
+      </section>
+      <section class="panel wide">
+        <h2>Paskutiniai įvykiai</h2>
+        <div id="feed"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot" id="foot"></footer>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+
+  <script src="config.js?v=1"></script>
+  <script src="hub.js?v=1"></script>
+</body>
+</html>
