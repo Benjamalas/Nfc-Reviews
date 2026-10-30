@@ -4,13 +4,8 @@ var TEXT = {
     rateTitle: 'Kaip mums sekėsi?',
     rateSub: 'Įvertinkite apsilankymą – tai užtruks vos kelias sekundes.',
     stars: ['Labai blogai', 'Blogai', 'Vidutiniškai', 'Gerai', 'Puikiai!'],
-    goodTitle: 'Ačiū! Atidarome Google…',
-    goodText: 'Jei langas neatsidarė, spauskite mygtuką.',
-    googleBtn: 'Rašyti atsiliepimą Google',
-    change: 'Pakeisti įvertinimą',
     badTitle: 'Kaip galėtume pagerėti?',
     badText: 'Papasakokite, kas jums nepatiko. Kiekvieną atsiliepimą skaitome ir stengiamės padėti.',
-    private: 'Šis atsiliepimas privatus – jį gaus tik parduotuvės savininkas.',
     msgLabel: 'Jūsų atsiliepimas',
     contactLabel: 'Telefonas arba el. paštas',
     contactHint: 'Kad galėtume su jumis susisiekti ir padėti.',
@@ -26,13 +21,8 @@ var TEXT = {
     rateTitle: 'How did we do?',
     rateSub: 'Rate your visit – it only takes a few seconds.',
     stars: ['Very bad', 'Bad', 'Okay', 'Good', 'Excellent!'],
-    goodTitle: 'Thank you! Opening Google…',
-    goodText: 'If it did not open, tap the button.',
-    googleBtn: 'Write a Google review',
-    change: 'Change rating',
     badTitle: 'How can we improve?',
     badText: 'Tell us what you did not like. We read every review and want to help.',
-    private: 'This review is private – only the shop owner will see it.',
     msgLabel: 'Your review',
     contactLabel: 'Phone or email',
     contactHint: 'So we can get in touch and help.',
@@ -72,8 +62,18 @@ function applyLang() {
   label(rating);
 }
 
-function show(step) {
-  ['rate', 'good', 'bad', 'done'].forEach(function (s) { $('step-' + s).hidden = s !== step; });
+// Atsiliepimo burbulas iššoka iš po žvaigždučių kortelės.
+function showForm() {
+  var card = $('form-card');
+  if (!card.hidden) return;
+  card.hidden = false;
+  setTimeout(function () { card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 250);
+}
+
+function showDone() {
+  $('rate-card').hidden = true;
+  $('form-card').hidden = true;
+  $('done-card').hidden = false;
   window.scrollTo(0, 0);
 }
 
@@ -86,8 +86,7 @@ function paintStars(n) {
   label(n);
 }
 
-function goGoogle(e) {
-  if (e) e.preventDefault();
+function goGoogle() {
   event('google', {}, true);
   location.href = cfg.googleReviewUrl;
 }
@@ -96,16 +95,12 @@ function rate(n) {
   rating = n;
   paintStars(n);
   if (n >= (cfg.goodFrom || 4)) {
-    // Geras įvertinimas – iškart į Google rašymo langą.
+    // Geras įvertinimas – iškart į Google rašymo langą, be jokio tarpinio ekrano.
     event('rating', {}, true);
-    show('good');
     goGoogle();
   } else {
     event('rating');
-    $('mini-stars').innerHTML = [1, 2, 3, 4, 5].map(function (i) {
-      return STAR_SVG.replace('<svg', '<svg class="' + (i <= n ? 'on' : '') + '"');
-    }).join('');
-    show('bad');
+    showForm();
   }
 }
 
@@ -138,7 +133,7 @@ function submitForm(e) {
     contact: contact,
     website: $('website').value
   }).then(function () {
-    show('done');
+    showDone();
   }).catch(function () {
     err.textContent = t('errNet');
     err.hidden = false;
@@ -174,12 +169,7 @@ function init() {
   }
   stars.addEventListener('mouseleave', function () { paintStars(rating); });
 
-  $('google-btn').href = cfg.googleReviewUrl;
-  $('google-btn').addEventListener('click', goGoogle);
   $('form').addEventListener('submit', submitForm);
-  document.querySelectorAll('[data-back]').forEach(function (b) {
-    b.addEventListener('click', function () { show('rate'); });
-  });
   $('lang').addEventListener('click', function () {
     lang = lang === 'lt' ? 'en' : 'lt';
     store('lang', lang);

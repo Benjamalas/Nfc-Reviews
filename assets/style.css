@@ -105,8 +105,30 @@ p { margin: 8px 0; }
   padding: 30px 22px 24px;
   text-align: center;
 }
-.step { animation: rise .35s ease both; }
+#done-card { animation: rise .35s ease both; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Atsiliepimo burbulas, iššokantis iš po žvaigždučių kortelės */
+.card.bubble {
+  margin-top: 18px;
+  transform-origin: 50% 0;
+  animation: pop .45s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+.card.bubble::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: var(--card);
+  border-radius: 5px 0 0 0;
+  transform: translateX(-50%) rotate(45deg);
+}
+@keyframes pop {
+  from { opacity: 0; transform: translateY(-36px) scale(.94); }
+  to { opacity: 1; transform: none; }
+}
 
 .foot { text-align: center; color: var(--muted); font-size: 13px; padding: 22px 16px 32px; }
 
@@ -127,26 +149,7 @@ p { margin: 8px 0; }
 .star:active { transform: scale(.9); }
 .star-label { min-height: 24px; font-weight: 700; color: var(--accent); margin: 4px 0 0; }
 
-.mini-stars { display: flex; justify-content: center; gap: 2px; margin-bottom: 10px; }
-.mini-stars svg { width: 22px; height: 22px; fill: var(--star-off); }
-.mini-stars svg.on { fill: var(--star); }
-
 /* ---------- Forma ---------- */
-.private {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  text-align: left;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-  border-radius: 14px;
-  padding: 12px 14px;
-  font-size: 14px;
-  font-weight: 500;
-  margin: 16px 0 4px;
-}
-.private svg { width: 18px; height: 18px; flex: none; fill: currentColor; margin-top: 1px; }
-
 form { text-align: left; margin-top: 8px; }
 label { display: block; font-size: 14px; font-weight: 700; margin: 16px 0 6px; }
 label small { font-weight: 500; color: var(--muted); font-size: 13px; }
@@ -193,43 +196,8 @@ textarea { min-height: 120px; resize: vertical; }
 .btn:active { transform: scale(.98); }
 .btn:disabled { opacity: .6; cursor: default; }
 .btn.secondary { background: #eef1f7; color: var(--text); box-shadow: none; }
-.btn.google {
-  background: #fff;
-  color: var(--text);
-  border: 1.5px solid var(--line);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, .06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-.btn.google svg { width: 22px; height: 22px; }
-
-.link {
-  background: none;
-  border: 0;
-  color: var(--muted);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 6px;
-  margin-top: 8px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 
 /* ---------- Būsenos ---------- */
-.spinner {
-  width: 46px;
-  height: 46px;
-  margin: 4px auto 16px;
-  border-radius: 50%;
-  border: 4px solid var(--accent-soft);
-  border-top-color: var(--accent);
-  animation: spin .8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
 .check { width: 76px; height: 76px; margin: 6px auto 16px; display: block; }
 .check circle { fill: color-mix(in srgb, var(--ok) 12%, #fff); stroke: var(--ok); stroke-width: 2.5; }
 .check path {
