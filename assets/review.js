@@ -43,7 +43,7 @@ var STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9
 var params = new URLSearchParams(location.search);
 var source = slug(params.get('s')) || 'tiesiogiai';
 var ref = (params.get('r') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12); // SMS prašymo ID
-var lang = store('lang') || (/^lt\b/i.test(navigator.language || 'lt') ? 'lt' : 'en');
+var lang = store('lang') || 'lt'; // numatyta lietuvių, EN – mygtuku
 var rating = 0;
 
 var $ = function (id) { return document.getElementById(id); };
