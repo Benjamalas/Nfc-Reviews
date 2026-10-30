@@ -19,8 +19,10 @@ const REMINDER_DAYS = 0;             // priminimas neatidariusiems po N d. (0 = 
 // {vardas} = ", Tomas" arba tuščia, {nuoroda} = asmeninė atsiliepimo nuoroda.
 const REQUEST_TEXT = 'Sveiki{vardas}! Ačiū, kad apsilankėte KGF parduotuvėje. Būsime labai dėkingi, jei skirsite 30 sek. ir įvertinsite mus: {nuoroda}';
 const REMINDER_TEXT = 'Sveiki! Primename – būsime labai dėkingi už 30 sek. įvertinimą: {nuoroda}';
-const AUTO_REPLY = true;             // padėkoti el. paštu klientui, palikusiam skundą su el. paštu
-const AUTO_REPLY_TEXT = 'Ačiū, kad parašėte. Gavome jūsų žinutę – savininkas susisieks per 24 val.\n\n' + BUSINESS_NAME;
+// Po privataus atsiliepimo klientui iškart išsiunčiama ši žinutė (SMS arba el. paštu).
+// Atsakymai į el. laišką ateina savininkui, į SMS – į parduotuvės telefoną.
+const FOLLOWUP_TEXT = 'Sveiki{vardas}! Čia KGF parduotuvė. Ačiū už jūsų atsiliepimą – labai norime suprasti, kas nutiko. Atsakykite į šią žinutę: kodėl likote nepatenkinti ir kaip galėtume jums padėti?';
+const FOLLOWUP_MAX_PER_DAY = 20;     // apsauga nuo piktnaudžiavimo forma
 
 // SMS siunčiamos per „SMS Gateway for Android“ (sms-gate.app) iš parduotuvės telefono.
 // Prisijungimą įrašykite į Project Settings → Script properties: SMS_USER ir SMS_PASS
@@ -35,9 +37,11 @@ const STATUSES = ['Naujas', 'Sprendžiama', 'Išspręsta'];
 
 // SMS eilės stulpeliai (nuo 0). Ranka pildomi tik pirmi du.
 const Q = { to: 0, name: 1, status: 2, sendAt: 3, sentAt: 4, opened: 5, rated: 6, reminder: 7,
-            channel: 8, created: 9, id: 10, link: 11, text: 12, error: 13 };
+            channel: 8, created: 9, id: 10, link: 11, text: 12, error: 13, kind: 14 };
 const Q_HEADERS = ['Telefonas / el. paštas', 'Vardas', 'Būsena', 'Siųsti', 'Išsiųsta', 'Atidarė', 'Įvertino',
-                   'Priminimas', 'Kanalas', 'Sukurta', 'ID', 'Nuoroda', 'Žinutė', 'Klaida'];
+                   'Priminimas', 'Kanalas', 'Sukurta', 'ID', 'Nuoroda', 'Žinutė', 'Klaida', 'Tipas'];
+const KIND_REQUEST = 'Prašymas';
+const KIND_FOLLOWUP = 'Atsakymas į atsiliepimą';
 
 // Įvykių kodai iš puslapio -> pavadinimai lentelėje.
 const TYPES = {
@@ -76,8 +80,9 @@ function doPost(e) {
   });
 
   if (d.type === 'feedback') {
-    notify(d, rating, ss);
-    autoReply(d);
+    const queued = followUp(ss, d);
+    notify(d, rating, ss, queued);
+    if (queued) processQueue(); // išsiunčia iškart, jei dabar leistinos valandos
   }
   return json({ ok: true });
 }
@@ -134,6 +139,7 @@ function prepare(sh, rows, r, i, now) {
     r[Q.link] = link;
     r[Q.text] = REQUEST_TEXT.replace('{vardas}', name ? ', ' + name : '').replace('{nuoroda}', link);
     r[Q.error] = '';
+    r[Q.kind] = KIND_REQUEST;
   }
   sh.getRange(row, 1, 1, Q_HEADERS.length).setValues([r.slice(0, Q_HEADERS.length).map(v => typeof v === 'string' ? clean(v, 600) : v)]);
 }
@@ -150,7 +156,7 @@ function sendDue(ss, sh, rows, now) {
     if (r[Q.status] === 'Laukia' && r[Q.sendAt] instanceof Date && r[Q.sendAt] <= now) {
       text = r[Q.text];
       field = Q.sentAt;
-    } else if (REMINDER_DAYS > 0 && r[Q.status] === 'Išsiųsta' && !r[Q.opened] && !r[Q.reminder] &&
+    } else if (REMINDER_DAYS > 0 && r[Q.kind] === KIND_REQUEST && r[Q.status] === 'Išsiųsta' && !r[Q.opened] && !r[Q.reminder] &&
                r[Q.sentAt] instanceof Date && now - r[Q.sentAt] >= REMINDER_DAYS * 864e5) {
       text = REMINDER_TEXT.replace('{nuoroda}', r[Q.link]);
       field = Q.reminder;
@@ -159,12 +165,12 @@ function sendDue(ss, sh, rows, now) {
 
     const row = i + 2;
     try {
-      deliver(r[Q.channel], String(r[Q.to]), String(text));
+      deliver(r[Q.channel], String(r[Q.to]), String(text), r[Q.kind]);
       sh.getRange(row, field + 1).setValue(now);
       sh.getRange(row, Q.error + 1).setValue('');
       if (field === Q.sentAt) {
         sh.getRange(row, Q.status + 1).setValue('Išsiųsta');
-        log(ss, now, r[Q.channel], 'request', '', r[Q.channel], '');
+        if (r[Q.kind] !== KIND_FOLLOWUP) log(ss, now, r[Q.channel], 'request', '', r[Q.channel], '');
       }
       sentToday++;
     } catch (err) {
@@ -176,9 +182,11 @@ function sendDue(ss, sh, rows, now) {
   });
 }
 
-function deliver(channel, to, text) {
+function deliver(channel, to, text, kind) {
   if (channel === 'email') {
-    MailApp.sendEmail(to, 'Kaip mums sekėsi? – ' + BUSINESS_NAME, text, { name: BUSINESS_NAME });
+    const followup = kind === KIND_FOLLOWUP;
+    MailApp.sendEmail(to, (followup ? 'Dėl jūsų atsiliepimo' : 'Kaip mums sekėsi?') + ' – ' + BUSINESS_NAME, text,
+      followup ? { name: BUSINESS_NAME, replyTo: notifyTo() } : { name: BUSINESS_NAME });
     return;
   }
   const props = PropertiesService.getScriptProperties();
@@ -195,6 +203,32 @@ function deliver(channel, to, text) {
   if (res.getResponseCode() >= 300) {
     throw new Error('SMS klaida ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 150));
   }
+}
+
+// Po privataus atsiliepimo įtraukia klientui skirtą žinutę į eilę. Grąžina true, jei įtraukta.
+function followUp(ss, d) {
+  const to = normalizeTo(d.contact);
+  const sh = ss.getSheetByName(SHEET_QUEUE);
+  if (!to || !sh) return false;
+  const now = new Date();
+  const today = Utilities.formatDate(now, TZ, 'yyyyMMdd');
+  return withLock(() => {
+    const sent = rowsOf(sh).filter(r => r[Q.kind] === KIND_FOLLOWUP && r[Q.created] instanceof Date);
+    if (sent.filter(r => Utilities.formatDate(r[Q.created], TZ, 'yyyyMMdd') === today).length >= FOLLOWUP_MAX_PER_DAY) return false;
+    if (sent.some(r => String(r[Q.to]) === to && now - r[Q.created] < 864e5)) return false;
+    const name = String(d.name || '').trim();
+    const row = Array(Q_HEADERS.length).fill('');
+    row[Q.to] = to;
+    row[Q.name] = name;
+    row[Q.status] = 'Laukia';
+    row[Q.sendAt] = allowedTime(now);
+    row[Q.channel] = to.indexOf('@') > 0 ? 'email' : 'sms';
+    row[Q.created] = now;
+    row[Q.text] = FOLLOWUP_TEXT.replace('{vardas}', name ? ', ' + name : '');
+    row[Q.kind] = KIND_FOLLOWUP;
+    sh.appendRow(row.map(v => typeof v === 'string' ? clean(v, 600) : v));
+    return true;
+  });
 }
 
 // Kai klientas atidaro nuorodą ar įvertina – pažymime SMS eilėje.
@@ -246,7 +280,7 @@ function notifyTo() {
   return (NOTIFY_EMAILS.length ? NOTIFY_EMAILS : [Session.getEffectiveUser().getEmail()]).join(',');
 }
 
-function notify(d, rating, ss) {
+function notify(d, rating, ss, followUpQueued) {
   const contact = String(d.contact || '').trim();
   const lines = [
     'Įvertinimas: ' + (rating ? rating + ' ★' : '—'),
@@ -256,26 +290,12 @@ function notify(d, rating, ss) {
     '',
     String(d.message || ''),
     '',
+    followUpQueued ? 'Klientui automatiškai išsiųsta žinutė su klausimu, kaip galime padėti.' : '',
     'Visi atsiliepimai: ' + ss.getUrl()
   ];
   const options = { name: 'Atsiliepimai' };
   if (/^\S+@\S+\.\S+$/.test(contact)) options.replyTo = contact;
   MailApp.sendEmail(notifyTo(), '⚠️ Naujas privatus atsiliepimas (' + (rating || '?') + '★)', lines.join('\n'), options);
-}
-
-// Automatinis „gavome jūsų žinutę“ klientui (tik el. paštu, ribotas kiekis).
-function autoReply(d) {
-  const contact = String(d.contact || '').trim();
-  if (!AUTO_REPLY || !/^\S+@\S+\.\S+$/.test(contact)) return;
-  const cache = CacheService.getScriptCache();
-  const sent = Number(cache.get('auto-replies') || 0);
-  if (sent >= 20) return;
-  cache.put('auto-replies', String(sent + 1), 21600);
-  try {
-    MailApp.sendEmail(contact, 'Gavome jūsų žinutę – ' + BUSINESS_NAME, AUTO_REPLY_TEXT, { name: BUSINESS_NAME });
-  } catch (err) {
-    console.error(err);
-  }
 }
 
 /** Kasdien 9:00 (trigeris): primena apie neatsakytus skundus ir neišsiųstas žinutes. */

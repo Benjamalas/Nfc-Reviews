@@ -3,7 +3,9 @@
 Review system for NFC cards, QR codes and automatic SMS/email requests.
 
 - **4–5 ★** → Google "write a review" window opens immediately.
-- **1–3 ★** → private form that goes to the owner's email and a Google Sheet. A small "write on Google" link stays visible. **Do not remove it**: hiding Google from unhappy customers is "review gating", which Google bans and can punish by deleting reviews.
+- **1–3 ★** → private review form (phone or email required) that goes to the owner's email and a Google Sheet. The customer then gets an automatic follow-up asking what went wrong and how to help.
+
+⚠️ Not showing Google to unhappy customers is "review gating". Google's rules forbid it, and if reported, Google can remove reviews or penalise the profile.
 
 Live (KGF): https://benjamalas.github.io/Nfc-Reviews/kgf/
 
@@ -12,7 +14,7 @@ Live (KGF): https://benjamalas.github.io/Nfc-Reviews/kgf/
 |---|---|
 | Review requests | Type the customer's phone or email into the **SMS eilė** sheet (Google Sheets app on a phone works). The system sends the SMS/email ~1 h later (only 9:00–20:00), at most once per 90 days per customer, max 50/day |
 | Tracking | Each request has its own link, so the **SMS eilė** sheet shows who opened it and how many ★ they gave |
-| Complaint alerts | Email to the owner instantly + automatic "we got your message" email to the customer |
+| Complaint handling | Email to the owner instantly + automatic follow-up to the customer by SMS or email (`FOLLOWUP_TEXT` in Code.gs). Email replies go to the owner, SMS replies to the shop phone |
 | Daily 9:00 | Email to owner if a complaint is still "Naujas" after 24 h or a message failed to send |
 | Monday 9:00 | Weekly report: requests sent, opened, ratings, Google clicks, complaints |
 | Reminder (off) | Set `REMINDER_DAYS = 3` in Code.gs to re-send once to people who didn't open the link |
@@ -46,7 +48,7 @@ Customers should agree to receive the SMS (staff can ask: "Ar galime atsiųsti t
 
 ## Sheet tabs
 - **Atsiliepimai**: private complaints. Owner sets **Būsena** (Naujas → Sprendžiama → Išspręsta).
-- **SMS eilė**: fill only the yellow columns (phone/email, name). The rest fills in by itself: status, send time, opened, rating, errors.
+- **SMS eilė**: fill only the yellow columns (phone/email, name). The rest fills in by itself: status, send time, opened, rating, errors. Follow-ups after private reviews also appear here (Tipas: *Atsakymas į atsiliepimą*).
 - **Veikla**: every visit, rating, Google click and sent request.
 - **Statistika**: per month, average rating, per source. Rows with source `test…` are ignored.
 

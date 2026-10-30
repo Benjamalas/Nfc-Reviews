@@ -3,6 +3,8 @@ window.REVIEW_CONFIG = {
   businessName: 'KGF parduotuvė',
   logo: '',                 // pvz. 'logo.png' šiame aplanke; tuščia = rodomos raidės
   logoText: 'KGF',
+  tagline: 'Kompiuterių ir telefonų parduotuvė bei remontas',
+  city: 'Marijampolė',
   accent: '#1f4fd8',
 
   // Tiesioginė „Rašyti atsiliepimą“ nuoroda (Place ID iš Google Maps).
@@ -13,9 +15,10 @@ window.REVIEW_CONFIG = {
 
   goodFrom: 4,              // nuo kiek žvaigždučių siūlyti Google
 
+  // Tekstas padėkos ekrane po privataus atsiliepimo.
   replyPromise: {
-    lt: 'Savininkas asmeniškai perskaitys ir susisieks per 24 val.',
-    en: 'The owner will read it personally and get back to you within 24 hours.'
+    lt: 'Netrukus gausite iš mūsų žinutę – norime išsiaiškinti situaciją ir jums padėti.',
+    en: 'You will get a message from us shortly – we want to understand what happened and help.'
   },
 
   publicUrl: ''             // jei bus savas domenas, pvz. 'https://atsiliepimai.lt/kgf/'

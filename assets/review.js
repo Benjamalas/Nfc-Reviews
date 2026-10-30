@@ -1,46 +1,48 @@
-// Atsiliepimų puslapis: žvaigždutės -> Google (geras) arba privati forma (blogas).
+// Atsiliepimų puslapis: žvaigždutės -> Google (geras) arba privatus atsiliepimas (blogas).
 var TEXT = {
   lt: {
     rateTitle: 'Kaip mums sekėsi?',
-    rateSub: 'Paspauskite žvaigždutę – tai užtruks 5 sekundes.',
-    bad: 'Blogai', great: 'Puikiai',
+    rateSub: 'Įvertinkite apsilankymą – tai užtruks vos kelias sekundes.',
+    stars: ['Labai blogai', 'Blogai', 'Vidutiniškai', 'Gerai', 'Puikiai!'],
     goodTitle: 'Ačiū! Atidarome Google…',
     goodText: 'Jei langas neatsidarė, spauskite mygtuką.',
-    goodTip: 'Patarimas: paminėkite, ką taisėme ar pirkome.',
     googleBtn: 'Rašyti atsiliepimą Google',
     change: 'Pakeisti įvertinimą',
-    badTitle: 'Atsiprašome, kad nepavyko',
-    badText: 'Parašykite, kas nutiko – norime tai ištaisyti.',
-    msgLabel: 'Kas nutiko?',
-    nameLabel: 'Vardas', contactLabel: 'Telefonas arba el. paštas', optional: '(neprivaloma)',
-    send: 'Siųsti savininkui',
+    badTitle: 'Kaip galėtume pagerėti?',
+    badText: 'Papasakokite, kas jums nepatiko. Kiekvieną atsiliepimą skaitome ir stengiamės padėti.',
+    private: 'Šis atsiliepimas privatus – jį gaus tik parduotuvės savininkas.',
+    msgLabel: 'Jūsų atsiliepimas',
+    contactLabel: 'Telefonas arba el. paštas',
+    contactHint: 'Kad galėtume su jumis susisiekti ir padėti.',
+    nameLabel: 'Vardas', optional: '(neprivaloma)',
+    send: 'Palikti atsiliepimą',
     sending: 'Siunčiama…',
     errEmpty: 'Parašykite bent kelis žodžius.',
+    errContact: 'Įveskite telefono numerį arba el. paštą, kad galėtume susisiekti.',
     errNet: 'Nepavyko išsiųsti. Patikrinkite internetą ir bandykite dar kartą.',
-    publicNote: 'Norite palikti viešą atsiliepimą?',
-    publicLink: 'Rašyti Google',
-    doneTitle: 'Ačiū, gavome jūsų žinutę'
+    doneTitle: 'Ačiū už atsiliepimą!'
   },
   en: {
     rateTitle: 'How did we do?',
-    rateSub: 'Tap a star – it takes 5 seconds.',
-    bad: 'Bad', great: 'Great',
+    rateSub: 'Rate your visit – it only takes a few seconds.',
+    stars: ['Very bad', 'Bad', 'Okay', 'Good', 'Excellent!'],
     goodTitle: 'Thank you! Opening Google…',
     goodText: 'If it did not open, tap the button.',
-    goodTip: 'Tip: mention what we repaired or what you bought.',
     googleBtn: 'Write a Google review',
     change: 'Change rating',
-    badTitle: 'We are sorry it did not go well',
-    badText: 'Tell us what happened – we want to make it right.',
-    msgLabel: 'What happened?',
-    nameLabel: 'Name', contactLabel: 'Phone or email', optional: '(optional)',
-    send: 'Send to the owner',
+    badTitle: 'How can we improve?',
+    badText: 'Tell us what you did not like. We read every review and want to help.',
+    private: 'This review is private – only the shop owner will see it.',
+    msgLabel: 'Your review',
+    contactLabel: 'Phone or email',
+    contactHint: 'So we can get in touch and help.',
+    nameLabel: 'Name', optional: '(optional)',
+    send: 'Leave a review',
     sending: 'Sending…',
     errEmpty: 'Please write at least a few words.',
+    errContact: 'Please enter a phone number or email so we can get in touch.',
     errNet: 'Could not send. Check your connection and try again.',
-    publicNote: 'Want to leave a public review?',
-    publicLink: 'Write on Google',
-    doneTitle: 'Thank you, we got your message'
+    doneTitle: 'Thank you for your review!'
   }
 };
 
@@ -66,17 +68,22 @@ function applyLang() {
   $('lang').textContent = lang === 'lt' ? 'EN' : 'LT';
   document.querySelectorAll('[data-t]').forEach(function (el) { el.textContent = t(el.dataset.t); });
   $('promise').textContent = (cfg.replyPromise || {})[lang] || '';
-  document.querySelectorAll('.star').forEach(function (s, i) {
-    s.setAttribute('aria-label', (i + 1) + ' / 5');
-  });
+  document.querySelectorAll('.star').forEach(function (s, i) { s.setAttribute('aria-label', t('stars')[i]); });
+  label(rating);
 }
 
 function show(step) {
   ['rate', 'good', 'bad', 'done'].forEach(function (s) { $('step-' + s).hidden = s !== step; });
+  window.scrollTo(0, 0);
+}
+
+function label(n) {
+  $('star-label').textContent = n ? t('stars')[n - 1] : ' ';
 }
 
 function paintStars(n) {
   document.querySelectorAll('.star').forEach(function (s, i) { s.classList.toggle('on', i < n); });
+  label(n);
 }
 
 function goGoogle(e) {
@@ -95,29 +102,40 @@ function rate(n) {
     goGoogle();
   } else {
     event('rating');
+    $('mini-stars').innerHTML = [1, 2, 3, 4, 5].map(function (i) {
+      return STAR_SVG.replace('<svg', '<svg class="' + (i <= n ? 'on' : '') + '"');
+    }).join('');
     show('bad');
-    $('msg').focus();
   }
+}
+
+function validContact(v) {
+  return /^\S+@\S+\.\S+$/.test(v) || v.replace(/[^\d]/g, '').length >= 8;
 }
 
 function submitForm(e) {
   e.preventDefault();
-  var form = $('form');
   var err = $('error');
-  var btn = form.querySelector('button[type=submit]');
+  var btn = $('form').querySelector('button[type=submit]');
   var message = $('msg').value.trim();
+  var contact = $('contact').value.trim();
   err.hidden = true;
   if (message.length < 3) {
     err.textContent = t('errEmpty');
     err.hidden = false;
-    return;
+    return $('msg').focus();
+  }
+  if (!validContact(contact)) {
+    err.textContent = t('errContact');
+    err.hidden = false;
+    return $('contact').focus();
   }
   btn.disabled = true;
   btn.textContent = t('sending');
   event('feedback', {
     message: message,
     name: $('name').value.trim(),
-    contact: $('contact').value.trim(),
+    contact: contact,
     website: $('website').value
   }).then(function () {
     show('done');
@@ -132,6 +150,8 @@ function submitForm(e) {
 
 function init() {
   $('biz').textContent = cfg.businessName || '';
+  $('tagline').textContent = cfg.tagline || '';
+  $('foot').textContent = [cfg.businessName, cfg.city].filter(Boolean).join(' · ');
   document.title = (cfg.businessName ? cfg.businessName + ' – ' : '') + 'atsiliepimas';
   if (cfg.logo) {
     var img = document.createElement('img');
@@ -155,9 +175,7 @@ function init() {
   stars.addEventListener('mouseleave', function () { paintStars(rating); });
 
   $('google-btn').href = cfg.googleReviewUrl;
-  $('google-small').href = cfg.googleReviewUrl;
   $('google-btn').addEventListener('click', goGoogle);
-  $('google-small').addEventListener('click', goGoogle);
   $('form').addEventListener('submit', submitForm);
   document.querySelectorAll('[data-back]').forEach(function (b) {
     b.addEventListener('click', function () { show('rate'); });
