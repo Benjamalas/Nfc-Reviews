@@ -21,7 +21,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--text);
-  font: 16px/1.55 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 16px/1.55 Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   background:
     radial-gradient(500px 320px at 105% 100%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
@@ -176,19 +176,12 @@ p { margin: 8px 0; }
 .star svg path { fill: var(--star-off); transition: fill .15s; }
 .star.on svg path { fill: url(#star-grad); }
 .star.on svg { filter: drop-shadow(0 5px 9px rgba(245, 158, 11, .4)); }
-.star:hover { transform: scale(1.14) rotate(-4deg); }
+@media (hover: hover) { .star:hover { transform: scale(1.14) rotate(-4deg); } }
 .star:active { transform: scale(.88); }
+.star:focus { outline: none; }
+.star:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
 .star.pop svg { animation: star-pop .45s cubic-bezier(.3, 1.6, .5, 1); }
-.star.pop::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: 50%;
-  border: 2px solid var(--star);
-  animation: ring .5s ease-out forwards;
-}
-@keyframes star-pop { 40% { transform: scale(1.35); } }
-@keyframes ring { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes star-pop { 40% { transform: scale(1.3); } }
 
 .star-label {
   display: inline-block;
@@ -257,46 +250,26 @@ textarea { min-height: 120px; resize: vertical; }
 
 /* ---------- Mygtukai ---------- */
 .btn {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  display: block;
   width: 100%;
   border: 0;
-  border-radius: 14px;
-  padding: 16px 18px;
+  border-radius: 12px;
+  padding: 15px 18px;
   margin-top: 22px;
   font: inherit;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 16px;
   text-align: center;
   cursor: pointer;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-  box-shadow: 0 12px 26px -6px color-mix(in srgb, var(--accent) 55%, transparent);
-  transition: transform .12s ease, opacity .15s, box-shadow .15s;
+  background: var(--accent);
+  transition: background .15s, transform .1s;
 }
-.btn svg { width: 19px; height: 19px; fill: currentColor; transition: transform .2s; }
-.btn:hover svg { transform: translateX(3px); }
-.btn::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -60%;
-  width: 40%;
-  height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .28), transparent);
-  transform: skewX(-20deg);
-  animation: sheen 4s 1.2s ease-in-out infinite;
-}
-@keyframes sheen { 0%, 65% { left: -60%; } 100% { left: 130%; } }
-.btn:active { transform: scale(.98); }
+@media (hover: hover) { .btn:hover { background: var(--accent-dark); } }
+.btn:active { transform: scale(.99); }
 .btn:disabled { opacity: .65; cursor: default; }
-.btn.secondary { background: #eef1f7; color: var(--text); box-shadow: none; }
-.btn.secondary::after { display: none; }
+.btn.secondary { background: #eef1f7; color: var(--text); }
 
 /* ---------- Ačiū ---------- */
 .burst { position: relative; width: 84px; height: 84px; margin: 4px auto 18px; }

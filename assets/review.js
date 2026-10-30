@@ -6,7 +6,7 @@ var TEXT = {
     tapHint: 'Pasirinkite nuo 1 iki 5 žvaigždučių',
     stars: ['😞 Labai blogai', '😕 Blogai', '😐 Vidutiniškai', '🙂 Gerai', '🤩 Puikiai!'],
     badTitle: 'Padėkite mums tobulėti',
-    badText: 'Papasakokite, kas jums nepatiko. Kiekvieną atsiliepimą skaitome ir stengiamės padėti.',
+    badText: 'Papasakokite, kas jums nepatiko. Kiekvieną atsiliepimą skaitome ir vertiname.',
     msgLabel: 'Jūsų pastebėjimai',
     contactLabel: 'Telefonas arba el. paštas',
     contactHint: 'Kad galėtume su jumis susisiekti ir padėti.',
@@ -24,7 +24,7 @@ var TEXT = {
     tapHint: 'Choose 1 to 5 stars',
     stars: ['😞 Very bad', '😕 Bad', '😐 Okay', '🙂 Good', '🤩 Excellent!'],
     badTitle: 'Help us improve',
-    badText: 'Tell us what you did not like. We read every review and want to help.',
+    badText: 'Tell us what you did not like. We read and value every review.',
     msgLabel: 'Your comments',
     contactLabel: 'Phone or email',
     contactHint: 'So we can get in touch and help.',
@@ -102,6 +102,7 @@ function rate(n) {
   star.classList.remove('pop');
   void star.offsetWidth; // iš naujo paleidžia animaciją
   star.classList.add('pop');
+  setTimeout(function () { star.classList.remove('pop'); }, 500);
   if (n >= (cfg.goodFrom || 4)) {
     // Geras įvertinimas – iškart į Google rašymo langą, be jokio tarpinio ekrano.
     event('rating', {}, true);

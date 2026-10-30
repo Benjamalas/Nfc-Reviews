@@ -5,7 +5,7 @@
  */
 
 // ---------- Nustatymai ----------
-const BUSINESS_NAME = 'KGF parduotuvė';
+const BUSINESS_NAME = 'KGF telefonų taisykla';
 const REVIEW_URL = 'https://benjamalas.github.io/Nfc-Reviews/kgf/';
 const NOTIFY_EMAILS = [];            // kam siųsti pranešimus; tuščia = skripto savininkui
 const TZ = 'Europe/Vilnius';
@@ -17,11 +17,11 @@ const MAX_PER_DAY = 50;              // daugiausiai automatinių žinučių per 
 const REMINDER_DAYS = 0;             // priminimas neatidariusiems po N d. (0 = išjungta)
 
 // {vardas} = ", Tomas" arba tuščia, {nuoroda} = asmeninė atsiliepimo nuoroda.
-const REQUEST_TEXT = 'Sveiki{vardas}! Ačiū, kad apsilankėte KGF parduotuvėje. Būsime labai dėkingi, jei skirsite 30 sek. ir įvertinsite mus: {nuoroda}';
+const REQUEST_TEXT = 'Sveiki{vardas}! Ačiū, kad apsilankėte KGF telefonų taisykloje. Būsime labai dėkingi, jei skirsite 30 sek. ir įvertinsite mus: {nuoroda}';
 const REMINDER_TEXT = 'Sveiki! Primename – būsime labai dėkingi už 30 sek. įvertinimą: {nuoroda}';
 // Po privataus atsiliepimo klientui iškart išsiunčiama ši žinutė (SMS arba el. paštu).
 // Atsakymai į el. laišką ateina savininkui, į SMS – į parduotuvės telefoną.
-const FOLLOWUP_TEXT = 'Sveiki{vardas}! Čia KGF parduotuvė. Ačiū už jūsų atsiliepimą – labai norime suprasti, kas nutiko. Atsakykite į šią žinutę: kodėl likote nepatenkinti ir kaip galėtume jums padėti?';
+const FOLLOWUP_TEXT = 'Sveiki{vardas}! Čia KGF telefonų taisykla. Ačiū už jūsų atsiliepimą – labai norime suprasti, kas nutiko. Atsakykite į šią žinutę: kodėl likote nepatenkinti ir kaip galėtume jums padėti?';
 const FOLLOWUP_MAX_PER_DAY = 20;     // apsauga nuo piktnaudžiavimo forma
 
 // SMS siunčiamos per „SMS Gateway for Android“ (sms-gate.app) iš parduotuvės telefono.

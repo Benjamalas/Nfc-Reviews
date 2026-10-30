@@ -1,6 +1,6 @@
 // Kliento nustatymai. Naujam klientui: nukopijuok visą šį aplanką ir pakeisk reikšmes.
 window.REVIEW_CONFIG = {
-  businessName: 'KGF parduotuvė',
+  businessName: 'KGF telefonų taisykla',
   logo: '',                 // pvz. 'logo.png' šiame aplanke; tuščia = rodomos raidės
   logoText: 'KGF',
   tagline: 'Kompiuterių ir telefonų parduotuvė bei remontas',
